@@ -1,0 +1,53 @@
+<!-- Macro de l'affichage d'un article -->
+{% macro render_blog_post(post, from_index=false) %}
+  <div class="post-preview">
+    {% if from_index %}
+      <h2 class="post-title"><a href="{{ post|url }}">{{ post.title }}</a></h2>
+    {% else %}
+      <h2 id="postToScroll" class="post-title">{{ post.title }}</h2>
+    {% endif %}
+      {{ post.body }}
+      <p class="post-meta">
+          <br>
+          Écrit par
+          {% if post.twitter_handle %}
+         <a href="https://twitter.com/{{ post.twitter_handle }}">
+              {{ post.author or post.twitter_handle }}
+          </a>
+          {% else %}
+          {{ post.author }}
+          {% endif %}
+          le {{ post.pub_date }}
+          {% if from_index == false %}
+<!--            <span class="post-share"><a href="https://twitter.com/share" class="twitter-share-button" lang="fr" data-text="{{ post.title }}" data-url="{{ url }}">Tweet</a></span>
+-->       {% endif %}
+      </p>
+  </div>
+<hr>
+
+{% endmacro %}
+
+<!-- Macro de l'affichage de l'aperçu d'un article (From index) -->
+{% macro render_blog_post_index(post, from_index=true,first=false) %}
+<div class="post-preview">
+    {% if from_index %}
+    <h2 class="post-title"><a href="{{ post|url }}">{{ post.title }}</a></h2>
+    {% else %}
+    <h2 class="post-title">{{ post.title }}</h2>
+    {% endif %}
+      {{ post.excerpt}}
+    <p class="post-meta">
+        <br>
+        Écrit par 
+        {% if post.twitter_handle %}
+        <a href="https://twitter.com/{{ post.twitter_handle}}">
+            {{ post.author or post.twitter_handle }}
+        </a>
+        {% else %}
+        {{ post.author }}
+        {% endif %}
+        le {{ post.pub_date }}
+    </p>
+  </div>
+<hr>
+{% endmacro %}

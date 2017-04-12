@@ -1,0 +1,64 @@
+title: Spark Streaming
+---
+author: Gilles ESSOKI
+---
+body:
+
+
+## Introduction
+---------------------
+
+Dans ce blog post, nous allons vous montrer l'étude de Boontadata au travers d'un moteur de traitement: Spark Streaming. Extension de l’API Spark, il permet de mettre en place des processus de streaming répondant à des problématiques de vitesse, tolérances à la panne, scalabilités lorsqu’il s’agit de données provenant d’un flux Stream (ces données peuvent venir de divers source tel que Flume, Kafka).
+Le principe de fonctionnement est relativement simple et l’on pourrait le vulgariser par le schéma suivant: 
+![spark-streaming-1](/static/img/spark-streaming/spark-streaming-1.png)
+
+Concrètement, Spark Streaming reçoit la donnée en stream, qu’il divise ensuite en batches (selon un intervalle de temps défini). 
+Ceux-ci sont ensuite gérés par le moteur Spark qui permet l'accumulation de données pendant ce temps
+![spark-streaming-2](/static/img/spark-streaming/spark-streaming-2.png)
+
+L’API Spark Streaming fonctionne en recevant un flot continu de données, Apache Kafka, plateforme streaming distribuée, basée sur le principe du “publish and subscribe”. 
+Cassandra sera notre base de données.
+![spark-streaming-3](/static/img/spark-streaming/spark-streaming-3.png)
+
+Le schéma ci-dessus représente le workflow de notre plateforme. Les données proviennent d’un IOT et sont envoyées dans un broker Kafka. Ce dernier représente la source de données de notre Spark Streaming qui enverra ensuite la donnée processée dans une base de données cassandra. 
+Le fichier “compare.py” permet de comparer et analyser les résultats. 
+
+Afin de connaître la procédure d’installation, n’hésitez pas à aller sur le lien [suivant](https://github.com/boontadata/boontadata-streams/blob/master/doc/procedure_install_running_scenarios.md). 
+Afin de démarrer le scénario spark, il faut aller dans le repertoire ***$BOONTADATA_HOME/code***, puis effectuer les commandes:
+```
+ . startscenario.sh spark
+ . runscenario.sh spark1
+``` 
+Les pré-requis pour exécuter un scénario spark sont diverses dans l’environnement boontadata et constituent des “blocs” qui fonctionnent ensemble.
+
+## Construction du conteneur spark
+--------------------------------------
+
+### A- Environnement de déploiement
+
+Le développement de Boontadata tend à s'affranchir de tous IDE. Pour l'exécution d’un job se servant de la JVM, on fait appel à un conteneur docker capable d’effectuer des commandes à la fois scala et java afin de construire des jars.
+<script src="https://gist.github.com/BastienBP/aa18314e0237d727abe51656338d7baa.js"></script>
+<h2> B- JAR </h2>
+La construction du jar se fait dans la classe <b>buildimages.sh</b> (c’est le script qui permet de créer, initialiser tous les conteneurs servant à l’étude) 
+La fonction <b>build_and_push</b> crée le jar, son image associé et le push dans le docker repository choisi pour l’étude.<br>
+
+Dans notre cas, si le paramètre passé à buildimages.sh est <i>reset</i> et que la première ligne du fichier représentant le paramètre passé à la fonction build_and_push est <i>$BOONTADATA_DOCKER_REGISTRY/boontadata/sparkmaster</i> alors on construit le jar <b>$BOONTADATA_HOME/code/spark/master/code/target/scala-2.11/boontadata-spark-job1-assembly-0.1.jar</b> dans le répertoire <i>$BOONTADATA_HOME/code/spark/master/code</i>
+Avec la commande <code>sbt clean assembly</code><br>
+<script src="https://gist.github.com/BastienBP/fd25ebde3d1d0948229ecf2e409c8a4a.js"></script>
+
+## C- CODE
+
+
+C’est ce code qui sera compilé et assemblé en jar pour exécution, il dépend du fichier build.sbt contenant toutes les dépendances spark-streaming et les librairies nécessaires à l’association de services voisins (kafka).
+<script src="https://gist.github.com/BastienBP/a0801dfad96104b5bae33f0feaf18bbd.js"></script>
+
+Dans StreamingJob.scala, on commence par définir un streamingContext auquel on va passer en paramètre une configuration Spark et le nombre de secondes représentant le temps batch du streaming. 
+On va alors créer un stream direct avec kafka, KafkaUtils.createDirectStream auquel on va passer en paramètre le streaming context créé, les paramètres kafka (brokers, etc..), un set de topic; ce qui sera donc notre message.
+À ce message, on va récupérer le 2ème élément qui correspond à notre charge kafka. On va à partir de cette récupération faire une reconstitution des événements de l’IOT. On agrège alors cette dernière en additionnant les mesures sur le temps de process. 
+On sauve le résultat dans Cassandra.
+
+ 
+---
+excerpt: Dans ce blog post, nous allons nous pencher sur l’étude d’un moteur de traitement: Spark Streaming. Extension de l’API Spark, il permet de mettre en place des processus de streaming répondant à des problématiques de vitesse, tolérances à la panne, scalabilités lorsqu’il s’agit de données provenant d’un flux Stream (ces données peuvent venir de divers source tel que Flume, Kafka)
+---
+pub_date: 2017-04-05

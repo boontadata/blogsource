@@ -1,0 +1,19 @@
+title: About
+---
+author: Vincent Heuschling
+---
+body:
+
+Le projet Boontadata vise à étudier les architectures de traitement de stream en fournissant des outils pour tester les différentes options disponibles sur le marché. Ce projet a été créé et est maintenu par Benjamin Guinebertière que vous pouvez retrouver sur twitter [@benjguin](https://twitter.com/benjguin).
+
+C'est un projet vivant, qui n'attend que vos contributions, twittez [@boontadata](https://twitter.com/boontadata) ou forkez le code sur [Github](https://github.com/boontadata/boontadata-streams). 
+---
+pub_date: 2017-3-29
+---
+twitter_handle: vhe74
+---
+_template: pageabout.html
+---
+_discoverable: yes
+---
+advertise: yes

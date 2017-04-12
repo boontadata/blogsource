@@ -1,0 +1,10 @@
+[project]
+name = Boontadata Blog
+
+[servers.ghpages]
+target = ghpages+https://gilolume/boontadata-blog
+
+[packages]
+lektor-disqus-comments = 0.1
+
+

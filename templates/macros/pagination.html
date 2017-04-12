@@ -1,0 +1,19 @@
+{% macro render_pagination(pagination) %}
+  <div class="pager">
+      <ul class="pager">
+          {% if pagination.has_prev %}
+          <li class="previous"><a href="{{ pagination.prev|url }}">Récent</a></li>
+          {% else %}
+          <!--Ne pas mettre le button si pas de prev -->
+          <!--<li class="previous"><a href="#">Récent</a></li>-->
+          {% endif %}
+          <!-- | {{ pagination.page }} | -->
+          {% if pagination.has_next %}
+          <li class="next"><a href="{{ pagination.next|url }}">Ancien</a></li>
+          {% else %}
+          <!--Ne pas mettre le button si pas de next -->
+          <!--<li class="next"><a href="#">Ancien</a></li>-->
+          {% endif %}
+      </ul>
+  </div>
+{% endmacro %}
