@@ -1,0 +1,117 @@
+title: Spark Structured Streaming
+---
+author: Gilles ESSOKI
+---
+body:
+
+Dans ce blogpost, nous allons développer notre étude autour d’un moteur de traitement streaming récent: Spark Structured Streaming.
+Scalable, tolérant aux pannes, à l’instar de Spark streaming, il se base sur le moteur Spark SQL et permet ainsi la construction d’applications.
+
+### Principe de fonctionnement
+Concrètement, structured streaming permet à l'utilisateur de traiter la donnée comme s'il s'agissait d'une table qui se remplissait perpétuellement:  chaque nouvelle occurence dans le stream pourrait se traduire par l'ajout d'une nouvelle ligne dans la table. 
+Spark traite la donnée ici de manière innovante, même si cela peut s'apparenter à un modèle de process batch conventionnel. 
+
+![spark-structured-streaming-3](/static/img/sstream/sstream-3.png)
+
+L'utilisateur peut ensuite réaliser une requête sur cette *input table afin* de générer une *output table*.
+Il s'agit ici d'une incrémentialisation: on est face à un phénomène de transformation des pseudos micros batchs en exécution de stream:
+* L'utilisateur défini un déclencheur (trigger) qui déterminera l'intervalle de temps sur lequel de nouvelles lignes s'insèreront sur l'*input table* et donc, définira les mises à jour de l'*output table*. 
+* En effet, à chaque déclenchement de trigger, spark vérifie la présence ou non de données (si de nouvelles lignes sont apparus dans l'*input table*), puis l'incrémente dans notre *output table*. 
+
+![spark-structured-streaming-4](/static/img/sstream/sstream-4.png)
+
+Le schéma ci dessus se termine par l'apparition de la notion de **mode d'output**. Ce mode détermine tout simplement le type d'écriture qui s'effectuera dans notre stockage externe (dans notre cas, cassandra). Il existe 3 modes: 
+* Append: seul les dernières lignes apparaissant dans notre *output table* depuis le dernier trigger s'écriront dans notre stockage
+* Complete: l'ensemble de l'*output table* sera écrit dans notre solution de stockage
+* Update: seul les lignes qui seront modifiées dans notre *output table* depuis le dernier trigger, seront changées dans notre solution de stockage. (** Non disponible en spark 2.0**)
+
+Exemple avec le mode Update:
+
+![spark-structured-streaming-5](/static/img/sstream/sstream-5.png)
+
+### Gestion d'Event-Time et du retard de la donnée:
+
+L'event time correspond à une date inclue dans la donnée elle même, ce qui peut être utile pour certaines applications. À des fins de précision, travailler sur une date correspondant au moment de la création de la donnée plutôt qu'au moment de son arrivée dans Spark est beaucoup plus judicieux. 
+Spark structured streaming permet de travailler sur cet "event-time" (présence d'une colonne event-time dans chaque ligne  de chaque évènement)  et ce qui permet de réaliser des agrégations sur cette fenêtre de temps (chaque fenêtre de temps étant un groupe et chaque ligne peut appartenir à un ou plusieurs groupes... 
+
+La gestion du retard de la donnée est elle aussi gérée automatiquement par ce modèle. Depuis que Spark gère la gestion de la mise à jour des output tables, il peut gérer les anciennes agrégations lorsqu'il s'agit de données en retard, tout comme il peut mettre à jour proprement des anciennes agrégations.  
+
+### Tolérance aux pannes:
+
+Spark structured stream a été pensé de manière à pouvoir garder des résultats valides, en cas de panne de machine, en redémarrant  et/ ou reprocessant la donnée:
+* Chaque source streaming est supposée disposer d'un système d'offsets, (comme Kafka) lui permettant de savoir la position du message dans le stream. 
+* Spark se base ainsi sur ce principe en écrivant des logs. Ces logs correspondent à l'intervalle d'offsets de la data processée dans chaque trigger. 
+* Le flux de sorti est réalisé de sorte à ce qu'il soit idempotent ( une opération a le même effet qu'on l'applique une ou plusieurs fois) et ce, pour permettre de processer la donnée à nouveau. 
+
+### Structured Spark Streaming dans Boontadata: 
+
+À travers ce blog, nous allons:
+* décrire notre intégration end-to-end avec Kafka, consumer les messages depuis ce dernier
+* utiliser les propriétés de Spark Structured Streaming afin de créer un streaming dataset
+* insérer ces données dans une base de données cassandra.
+
+![spark-structured-streaming-1](/static/img/sstream/sstream-1.png)
+
+
+*Nous pourrons noter le fait que Spark Structured Streaming est toujours en phase “Alpha” de développement, tout comme les API permettant son utilisation.*
+
+
+L'architecture utilisée à travers ce blogpost repose également sur notre plateforme générique boontadata.
+Elle est constituée des éléments :
+* Simulateur IOT permettant de créer des flux de messages
+* Système de messagerie distribué Kafka basé sur le principe du "publisher" / "Subscriber"
+* Base donnée Cassandra pour le stockage des données et résultats
+* Service de traitement des flux : Spark Streaming dans le cas de ce blog post
+* Module de comparaison pour évaluer l'impact et la performance du module de traitement
+
+Tous les éléments de la plateforme boontada sont créés dans des containers distincts de manière à apporter un maximum de flexibilité.
+
+
+![spark-structured-streaming-2](/static/img/sstream/sstream-2.png)
+
+Le schéma ci-dessus représente le workflow de notre plateforme.
+Les données proviennent d’un IOT et sont envoyées dans un broker Kafka. Les données sources sont également agrégées sur une fenêtre de temps par la simulateur IOT et sauvegardées dans la base Cassandra pour servir de référence.
+La brique Kafka sert de source de données à Spark Structured Streaming qui représente le service de traitement à évaluer.
+Spark Structured Streaming procède au traitement des streams par création de datasets.
+Ces datasets sont ensuite stockés dans la base de données cassandra.
+Le module de comparaison récupère les résultats dans Cassandra et permet d'évaluer les latences induites par le traitement Spark Streaming.
+
+Afin de connaître la procédure d’installation, n’hésitez pas à aller sur le lien [suivant](https://github.com/boontadata/boontadata-streams/blob/master/doc/procedure_install_running_scenarios.md).
+
+Ayant déjà traité le fonctionnement de notre environnement et architecture boontadata dans un blog précédent (lien vers spark streaming),   nous détaillerons ici le code correspondant au nouveau scénario Spark structured Streaming.
+
+
+----------------------------------------
+## Code:
+
+<h3>SparkSession et récupération des messages Kafka</h3>
+
+Pour Spark Structured Streaming, le code est écrit en scala (SStreamingJob.scala). Les principaux éléments du code sont les suivants :
+<ul>
+<li> Définition d'une configuration "sparkConf" prenant en compte le nom de notre application et la connexion à la base de données Cassadandra</li>
+<script src="https://gist.github.com/BastienBP/7e707482cffb4a5fec9fc27f54ca4fb7.js"></script>
+<li> Lancement d'une nouvelle session spark </li>
+<li> Lecture en streaming des messages provenant des brokers Kafka.  On y renseigne l'adresse des brokers, le topic, le type de lecture, ici "latest", permettant de récupérer les dernier messages du topic </li>
+<script src="https://gist.github.com/BastienBP/5d9dfc2dc496f3199e8465a482e6cdd4.js"></script>
+
+<h3>Création du dataset</h3>
+<li> On récupère ensuite les champs "value" et "timestamp" des messages (que l'on caste au format String).
+On définit une colonne "cols", liste des éléments que l'on veut récupérer de "value".
+On réalise ensuite un dataset, issu de la séparation par "|" de chaque ligne.  </li>
+<script src="https://gist.github.com/BastienBP/fea5dba294b89a2d9ff3a7f341f20030.js"></script>
+</ul>
+
+
+
+
+
+----------------------------------------
+
+
+
+
+
+---
+excerpt: Dans ce blogpost, nous allons développer notre étude autour d’un moteur de traitement streaming récent: Spark Structured Streaming. Scalable, tolérant aux pannes, à l’instar de Spark streaming, il se base sur le moteur Spark SQL et permet ainsi la construction d’applications.
+---
+pub_date: 2017-04-25
