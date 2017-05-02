@@ -22,7 +22,7 @@ Cette table d'entrée peut ensuite être transformée par une requête qui s'ex�
 La manière de persister les données est définie pour un "output mode" qui peut prendre les valeurs suivantes :
 * Append: seules les **nouvelles lignes** apparaissant dans notre *output table* depuis le dernier trigger s'écriront dans le stockage.
 * Complete: l'ensemble de l'*output table* sera écrit : c'est le mode que nous utiliserons pour ce démonstrateur
-* Update: seules les lignes **modifiées** dans notre *output table* depuis le dernier trigger, seront écrites. (** Non disponible en spark 2.1**)
+* Update: seules les lignes **modifiées** dans notre *output table* depuis le dernier trigger, seront écrites. (**Non disponible en spark 2.1**)
 
 Exemple de comptage des devices par categories de notre simulateur IOT avec le mode **Complete** :
 
@@ -81,6 +81,9 @@ Pour Spark Structured Streaming, le code est écrit en scala (SStreamingJob.scal
 <h3>Création du dataset</h3>
 <li> Extraction des informations du message : définition des colonnes formant le dataset </li>
 <li> Application de la logique business  : somme des mesures sur la fenêtre de temps</li>
+<i> Il faut noter que la déduplication des messages n'est pas réalisée en raison d'une limitation du moteur spark structured streaming.  
+En effet, à l'heure actuelle, il n'est pas possible de réaliser plus d'une agrégation dans les traitements.  
+Pour palier à ce problème, il aurait fallu envoyer le résultat de la déduplication dans un nouveau topic kafka puis traiter ce nouveau message pour faire la somme des mesures de l'IOT.</i>
 <script src="https://gist.github.com/lololc/7ea918152380cd1e327bc063aeab89ee.js"></script>
 
 <h3>Application de la requête et enregistrement des données</h3>
@@ -88,6 +91,7 @@ Pour Spark Structured Streaming, le code est écrit en scala (SStreamingJob.scal
 <script src="https://gist.github.com/lololc/c1b22eaee7174e1e67994002a5abe45f.js"></script>
 
 <li> Ecriture dans Cassandra : utilisation du Foreach writer </li>
+<i> L'output mode a été fixé en "complete" : seul mode adapté dans notre cas (le mode append ne peut être utilisé car les lignes agrégées doivent être modifiées au fur et à mesure de l'arrivée des messages et le mode update n'est pas disponible). Ce mode pourrait poser des problèmes de performances si la taille de la table de sortie devient trop importante.</i>
 <script src="https://gist.github.com/lololc/ac9c0a4f75c305e96d201c5e9700e293.js"></script>
 </ul>
 
@@ -103,18 +107,20 @@ ds.writeStream.queryName("aggregateStructuredStream")
 
 ## Résultats
 
-L'analyse des résultats permet de comparer les valeurs d'agrégation (sur la fenêtre de temps de 5s) réalisées en début de workflow par le simulateur IOT avec celles calculées par le moteur Spark Structured Streaming  
+L'analyse des résultats permet de comparer les valeurs d'agrégation (sur la fenêtre de temps de 5s) réalisées en début de workflow par le simulateur IOT avec celles calculées par le moteur Spark Structured Streaming.
 
 Exemple de résultats :
 ```
 Comparing ingest device and downstream for m1_sum
 ---------------------------------------------------
-21 exceptions out of 21
+26 exceptions out of 26
 ()
 Exceptions are:
 ```
 ![spark-structured-streaming-6](/static/img/sstream/results_sss.png)
 
+Ces résultats mettent en évidence les faiblesses actuelles du moteur spark structured streaming. 
+En effet, l'impossibilité de réaliser plusieurs agrégations dans un même traitement et la non disponibilité du mode output "update" sont des éléments qui attestent de la jeunesse de ce moteur.
 
 
 ---
