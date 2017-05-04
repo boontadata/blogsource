@@ -5,7 +5,7 @@ author: Gilles ESSOKI
 body:
 
 Dans ce blogpost, nous allons développer notre étude autour d’un moteur de traitement streaming récent: Spark Structured Streaming.
-Scalable, tolérant aux pannes, à l’instar de Spark streaming, il se base sur le moteur Spark SQL et permet ainsi la construction d’applications.
+Scalable, tolérant aux pannes, à l’instar de Spark streaming, il se base sur le moteur Spark SQL et permet ainsi la construction plus simple d’applications.
 
 ### Principe de fonctionnement
 Concrètement, structured streaming permet à l'utilisateur de traiter la donnée comme s'il s'agissait d'une table qui se remplissait perpétuellement:  chaque nouvelle occurence dans le stream pourrait se traduire par l'ajout d'une nouvelle ligne dans la table. 
@@ -63,7 +63,7 @@ Tous les éléments de la plateforme boontada sont créés dans des containers d
 
 Afin de connaître la procédure d’installation, n’hésitez pas à aller sur le lien [suivant](https://github.com/boontadata/boontadata-streams/blob/master/doc/procedure_install_running_scenarios.md).
 
-Ayant déjà traité le fonctionnement de notre environnement et architecture boontadata dans les blogs précédents [boontadata](https://),   nous détaillerons ici le code correspondant au nouveau scénario Spark structured Streaming.
+Ayant déjà traité le fonctionnement de notre environnement et architecture boontadata dans les blogs précédents (voir l'article spark streaming dans la série boontadata),   nous détaillerons ici le code correspondant au nouveau scénario Spark structured Streaming.
 
 
 ----------------------------------------
@@ -107,7 +107,7 @@ ds.writeStream.queryName("aggregateStructuredStream")
 
 ## Résultats
 
-L'analyse des résultats permet de comparer les valeurs d'agrégation (sur la fenêtre de temps de 5s) réalisées en début de workflow par le simulateur IOT avec celles calculées par le moteur Spark Structured Streaming.
+L'analyse des résultats permet de comparer les valeurs d'agrégation (sur la fenêtre de temps de 5s) réalisées en début de workflow par le simulateur IOT avec celles calculées par le moteur Spark Structured Streaming (sur la base de l'event time)
 
 Exemple de résultats :
 ```
