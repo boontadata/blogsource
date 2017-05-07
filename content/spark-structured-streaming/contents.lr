@@ -93,8 +93,10 @@ Pour Spark Structured Streaming, le code est écrit en scala (SStreamingJob.scal
 <li> Lancement d'une nouvelle session spark </li>
 <li> Lecture en streaming des messages provenant des brokers Kafka.  On y renseigne l'adresse des brokers, le topic, le type de lecture, ici "latest", permettant de récupérer les dernier messages du topic </li>
 <script src="https://gist.github.com/BastienBP/5d9dfc2dc496f3199e8465a482e6cdd4.js"></script>
+</ul>
 
 <h3>Création du dataset</h3>
+<ul>
 <li> On récupère ensuite les champs "value" et "timestamp" des messages (que l'on caste au format String).
 On définit une colonne "cols", liste des éléments que l'on veut récupérer de "value".
 On réalise ensuite un dataset, issu de la séparation par "|" de chaque ligne.  </li>
