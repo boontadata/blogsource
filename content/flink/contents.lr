@@ -7,15 +7,17 @@ body:
 
 ## Introduction
 
-Ce blogpost sera dédié à la présentation et l'utilisation d'un autre moteur de traitement des flux de données open source : Apache Flink. A l'origine de ce framework, l'idée selon laquelle il est possible de considérer un traitement batch comme un traitement sur un flux de données fini. Dans ce cadre, pourquoi ne pas traiter de manière identique les flux et les batches ? Bon nombre d'applications telles que les analyses en temps réelles,  le traitement des données historiques (batch), les algorithmes itératifs (machine learning) peuvent ainsi être exécutées comme un pipeline de transformations sur un flux de données.
+Ici nous allons utiliser un autre moteur de traitement des flux de données open source : Apache Flink. A l'origine de ce framework, l'idée selon laquelle il est possible de considérer un traitement batch comme un traitement sur un flux de données fini. Dans ce cadre, pourquoi ne pas traiter de manière identique les flux et les batches ? Bon nombre d'applications telles que les analyses en temps réel,  le traitement des données historiques (batch), les algorithmes itératifs (machine learning) peuvent ainsi être exécutées comme un pipeline de transformations sur un flux de données.
 
-Flink possède une vaste panoplie de fonctionnalités permettant de répondre aux spécificités de l'analyse "quasi" temps réelle en mode distribué sur des flux de données. Parmi lesquelles :
+Flink possède une vaste panoplie de fonctionnalités permettant de répondre aux spécificités de l'analyse "quasi" temps réel en mode distribué sur des flux de données. Parmi lesquelles :
 * La capacité de gérer des données aussi bien en mode streaming qu'en mode batch : un dataset étant considéré comme un flux de données fini, les mêmes API pourront être utilisées dans les 2 cas,
 * La gestion des cas de retard de la donnée ou encore de donnée non ordonnées, que nous détaillerons plus en détails par la suite,
 * La tolérance aux pannes et la restauration de la donnée si un problème survient,
 * Une grande scalabilité : flink peut être déployé sur des milliers de noeuds tout en conservant des caractéristiques de performances très élevées,
-* Une API en Scala/Java et python en beta,
+* Une API en Scala/Java et python en beta, 
 * Un vaste écosystème donnant accès aux applications de machine learning, de graphe...
+
+Flink se caractérise aussi par des choix d'architecture très originaux comme par exemple la gestion de la mémoire. Il alloue une très large plage de mémoire dans la JVM, et va ensuite gérer lui  même les allocations à l'intérieur de celle-ci. Cette approche a pour bénéfice de limiter les impacts du "Garbage Collector" et donc d'avoir des traitements beaucoup plus stables dans le temps. 
 
 ### Principe de fonctionnement
 
@@ -119,7 +121,8 @@ Cette classe retourne deux éléments:  un TimeStamp et un watermark<br/>
 <li>Après déduplication et agrégation (somme des mesures) sur une "window_time" de 5 secondes, les données sont envoyées dans cassandra: </li><br/>
 <script src="https://gist.github.com/BastienBP/0794e111c8a00947b6e30a0e42413ef8.js"></script>
 <br/>
-### Resultats: 
+
+### Résultats: 
 
 Nous obtenons ainsi 3 résultats selon qu'il s'agisse du traitement par Processing Time, Event Time ou Ingestion Time: <br/>
 
