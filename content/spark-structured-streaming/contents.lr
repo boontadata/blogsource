@@ -124,6 +124,6 @@ En effet, l'impossibilité de réaliser plusieurs agrégations dans un même tra
 
 
 ---
-excerpt: Dans ce blogpost, nous allons développer notre étude autour d’un moteur de traitement streaming récent: Spark Structured Streaming. Scalable, tolérant aux pannes, à l’instar de Spark streaming, il se base sur le moteur Spark SQL et permet ainsi la construction d’applications.
+excerpt: Dans ce blogpost, nous allons développer notre étude autour d’un moteur de traitement streaming récent: Spark Structured Streaming. Scalable, tolérant aux pannes, à l’instar de Spark streaming, il se base sur le moteur Spark SQL et permet ainsi la construction plus simple d’applications.
 ---
 pub_date: 2017-04-25
