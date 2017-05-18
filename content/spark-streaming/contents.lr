@@ -4,7 +4,7 @@ author: Gilles ESSOKI
 ---
 body:
 
-Dans ce blog post, nous allons vous montrer l'étude de Boontadata au travers d'un moteur de traitement: Spark Streaming. 
+Dans ce blog post, nous allons vous montrer l'étude de Boontadata au travers d'un moteur de traitement : Spark Streaming. 
 Cette extension de l’API Spark permet de mettre en place des processus de traitements répondant à des problématiques de vitesse, tolérance à la panne, scalabilité lorsqu’il s’agit de données provenant d’un flux (ces données peuvent venir de sources diverses telles que Flume, Kafka).
 ![spark-streaming-1](/static/img/spark-streaming/spark-streaming-1.png)
 
@@ -15,7 +15,7 @@ Ceux-ci sont ensuite gérés par le moteur Spark qui permet le traitement des do
 L'architecture mise en place repose sur la plateforme générique boontadata constituée des éléments :
 * Simulateur IOT permettant de créer des flux de messages
 * Système de messagerie distribué Kafka basé sur le principe du "publisher" / "Subscriber"
-* Base donnée Cassandra pour le stockage des données et résultats
+* Base de donnée Cassandra pour le stockage des données et résultats
 * Service de traitement des flux : Spark Streaming dans le cas de ce blog post
 * Module de comparaison pour évaluer l'impact et la performance du module de traitement
 
@@ -24,7 +24,7 @@ Tous les éléments de la plateforme boontada sont créés dans des containers d
 ![spark-streaming-3](/static/img/spark-streaming/spark-streaming-3.png)
 
 Le schéma ci-dessus représente le workflow de notre plateforme.  
-Les données proviennent d’un IOT et sont envoyées dans un broker Kafka. Les données sources sont également aggrégées sur une fenêtre de temps par la simulateur IOT et sauvegardées dans la base Cassandra pour servir de référence.  
+Les données proviennent d’un IOT et sont envoyées dans un broker Kafka. Les données sources sont également aggrégées sur une fenêtre de temps par le simulateur IOT et sauvegardées dans la base Cassandra pour servir de référence.  
 La brique Kafka sert de source de données à Spark Streaming qui représente le service de traitement à évaluer.  
 Spark Streaming procède au traitement des données (aggrégation) sur des micro-batches et stocke les résultats dans la base de données cassandra.  
 Le module de comparaison récupère les résultats dans Cassandra et permet d'évaluer les latences induites par le traitement Spark Streaming. 
@@ -48,7 +48,7 @@ Pour Spark Streaming, le code est écrit en scala (StreamingJob.scala). Les prin
 <ul>
 <li> Définition d'un streamingContext prenant en compte le nombre de secondes correspondant à notre fenêtre de temps de référence (dans notre exemple 5s) </li>
 <li> Lecture du flux de messages depuis le topic Kafka, la donnée est alors stockée sous forme de micro-batches par spark </li>
-<li> Reconstitution des évènements de l'IOT par agrégation des messages selon leurs DeviceId et Category pour chaque micro-batche </li>
+<li> Reconstitution des évènements de l'IOT par agrégation des messages selon leurs DeviceId et Category pour chaque micro-batch </li>
 <li> Sauvegarde des résultats dans Cassandra pour comparaison avec le traitement initial </li>
 </ul>
 <script src="https://gist.github.com/BastienBP/98d1708e63300d38cdad084c13403398.js"></script>
@@ -67,7 +67,7 @@ La fonction **build_and_push** du script **buildimages.sh** permet de créer le 
 
 * Les images sont uploadées sur le registry docker via `docker push`  
 
-Note : toutes les images docker correspondantes aux autres éléments génériques de l'infrastructure boontadata sont également construits à l'aide du script **build_and_push.sh**  
+Note : toutes les images docker correspondantes aux autres éléments génériques de l'infrastructure boontadata sont également construites à l'aide du script **build_and_push.sh**  
 ```
 build_and_push $BOONTADATA_HOME/code/pyclientbase
 build_and_push $BOONTADATA_HOME/code/pyclient
@@ -130,6 +130,6 @@ Exceptions are:
 		
  
 ---
-excerpt: Dans ce blog post, nous allons nous pencher sur l’étude d’un moteur de traitement: Spark Streaming. Extension de l’API Spark, il permet de mettre en place des processus de streaming répondant à des problématiques de vitesse, tolérances à la panne, scalabilités lorsqu’il s’agit de données provenant d’un flux Stream (ces données peuvent venir de divers sources tel que Flume, Kafka)
+excerpt: Dans ce blog post, nous allons nous pencher sur l’étude d’un moteur de traitement: Spark Streaming. Extension de l’API Spark, il permet de mettre en place des processus de streaming répondant à des problématiques de vitesse, tolérance à la panne et scalabilité lorsqu’il s’agit de données provenant d’un flux Stream (ces données peuvent venir de divers sources tel que Flume, Kafka)
 ---
 pub_date: 2017-04-18
