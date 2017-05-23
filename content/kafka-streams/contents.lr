@@ -1,0 +1,188 @@
+title: Kafka Streams
+---
+author: Gilles ESSOKI, Bastien BRUNOD
+---
+body:
+
+
+![Kafka-Streams](/static/img/kafka-streams/kafka-streams-0.png)
+## Introduction
+
+Ce blogpost met en exergue Kafka Streams, un composant du projet Open Source Apache Kafka. 
+C'est une librairie puissante et facile à utiliser, permettant de construire des applications de traitement de flux distribués et hautement évolutifs. C'est aussi la technologie la plus adaptée pour traiter les données stockées dans Apache Kafka.  
+
+Kafka Streams présente notamment quelques caractéristiques utiles à son utilisation sur des flux streams :
+* __Il se veut performant__ : de par sa scalabilité, sa tolérance à la panne, sa gestion d'état des applications ("Stateful" et "Stateless") mais aussi la possibilité d'opérer sur les Event-Time avec les notions de fenêtrage, jointures et autre agrégations...  
+* __Il se veut léger__ : pas besoin de cluster dédié à Kafka Stream : c'est une application en java ou scala qui exécute une tâche en temps réel, sans dépendance annexe.  
+* __Gestion transparent des données arriérées et hors délai__ : à l'inverse de Spark Streaming, il n'effectue pas de micro-batch des messages. Il gère les données non ordonnées et le retard des données pour des latences de l'ordre de la milliseconde.
+
+
+### Event Time, Processing Time, Ingestion Time :
+
+Quand on parle de stream, il est indispensable de maîtriser la notion de temps. On distingue trois cas : 
+
+* Processing Time : pour une opération en cours, c'est le temps correspondant au moment où l'information est traitée. 
+* Event time : il correspond au moment de la création de la donnée et est souvent présent sous la forme d'un timestamp. L'event time est inclu dans la donnée elle-même.
+*  Ingestion time : ce temps correspond au moment où la donnée entre dans un topic Kafka. Contrairement à l'Event-Time, l'enregistrement se fait par Kafka quand la donnée entre dans le topic et non par la source de données lors de sa création. 
+
+ATTENTION : si l'appellation ingestion-time vous est familière de par votre connaissance d'autres moteurs de traitement streaming (Flink, etc), elle est différente dans Kafka-Streams dans le sens où l'ingestion time correspond au moment où la donnée entre dans un topic Kafka. 
+
+![Some-Time-Tips!](/static/img/kafka-streams/kafka-streams-2.png)
+
+### KStream ou Ktable?
+
+Avant d'entrer dans le détail, essayons d'éclaircir le lien entre les tables et les streams :
+ 
+On pourrait décrire le stream comme un changement dans une table, dans le sens où chaque nouvelle donnée impactera le contenu de notre table. Un stream peut être considéré comme une table qui se construit en temps réel grâce à la lecture de tous les enregistrements (changelog). 
+
+En ce sens, l'agrégation de données dans un stream retournera une table. 
+En revanche, une table pourrait être considérée comme une image à un instant T de la dernière valeur pour chaque clé d'un flux stream. Elle pourrait alors être vue comme un flux stream constitué des entrées "clef-valeur" de cette table.
+
+Essayons de traduire cela par un schéma. Disons que nous avons un device_id qui génère un nombre X de messages.
+
+À gauche, nous avons la Table représentant notre table qui se mettra à jour en fonction des nouveaux enregistrements. 
+On remarque que chaque nouvelle mise à jour de notre table peut se traduire par un "changelog" qui constituera notre flux stream. Flux Stream qui peut notamment servir à la construction d'une table Table.
+
+![Stream-vs-Table](/static/img/kafka-streams/kafka-streams-1.png)
+
+Deux types de streams sont donc présents dans l'API : __KTable__ et __KStreams__. 
+
+* Les Ktables peuvent être comparées à des streams finis, où chaque enregistrement représenterait une mise à jour de la table, la valeur du dernier enregistrement remplaçant ainsi l'ancienne valeur pour une même clé. Si cette clé n'existe pas, il y aura création de celle-ci avec la valeur correspondante. 
+
+* Les Kstreams sont l'équivalent du topic Kafka. Chaque nouveau message d'un topic Kafka constituera un nouvel enregistrement dans le KStream associé.
+
+![Stream-vs-Table](/static/img/kafka-streams/kafka-streams-3.png)
+
+
+## Partitions et Tâches : 
+
+Le modèle de partitionnement de Kafka Streams se base exclusivement sur celui de Kafka, le but étant de rendre scalable un processus. 
+
+Si Kafka peut partitionner la donnée afin de la stocker et de la transformer, Kafka Streams la partitionne pour la traiter. Cette notion de parallélisme est basée sur certaines caractéristiques :
+* Une partition de Kafka Streams est ordonnée de la même manière que la partition du topic Kafka correspondant.
+* Un message du topic Kafka correspondra de ce fait à un enregistrement Kafka Streams.
+* Les clés des enregistrements déterminent comment la donnée sera dirigée dans les partitions d'un topic : elles déterminent le partitionnement de la donnée dans Kafka et Kafka Streams. 
+
+**Comment cela fonctionne?**
+ 
+Lorsque l'on parle de Kafka Streams, on ne parle pas de framework mais de librairies : ce sont des programmes java, que l'on peut déployer sur plusieurs instances grâce à la JVM. Ces librairies contiennent des threads, capables d'exécuter des tâches qui sont définies par Kafka Streams. Le nombre de thread est fixe, et chaque tâche se voit attribuer une liste de partitions (qui ne changera pas d'ailleurs). 
+Ainsi, l'application peut être déployée sur différentes machines, permettant la parallélisation des tâches, distribuées automatiquement par Kafka Streams sur ces machines. Si une instance tombe, toutes les tâches de cette instance seront recommencées sur une autre machine, en continuant à consommer les messages de la même partition stream. 
+L'utilisateur peut alors configurer le nombre de threads dont chacun pourra exécuter une ou plusieurs tâches : 
+
+![One Thread, two Tasks](/static/img/kafka-streams/kafka-streams-4.png)
+
+Pour mieux comprendre, donnons un exemple : 
+
+Nous avons, comme dans le schéma précédent, un topic et une application Kafka Streams qui consomment les messages provenant des deux partitions de ce topic. On décide de lancer notre application avec un Stream thread configuré à 1. Kafka Streams configurera le nombre de tâches à 2, du fait du nombre de partition dans le topic Kafka. 
+On décide de lancer l'application sur une seule machine : 
+
+![One Instance, two Tasks](/static/img/kafka-streams/kafka-streams-5.png)
+
+On se rend compte que le nombre de données provenant des topics est trop important pour une seule machine. On décide de "déplacer" la deuxième tâche du thread sur une autre machine : 
+
+![One Instance, two Tasks](/static/img/kafka-streams/kafka-streams-6.png)
+
+Les partitions sont redirigées de l'ancien thread vers le nouveau. Dans notre cas : du thread 0 de notre machine A vers le thread 0 de notre machine B. 
+Kafka Streams effectue de ce fait un partage du travail d'une instance vers une autre. 
+La seule limite à ce principe est le nombre maximum d'instance que l'on peut lancer. Ce nombre est atteint lorsque ``` nombre_instances = nombre de partitions ```. 
+
+## Kafka Streams dans Boontadata :
+
+Nous allons dans cette partie du blog, 
+
+* Décrire l'intégration end-to-end avec Kafka et en consommer les messages.
+* Utiliser Kafka Streams comme moteur de streaming.
+* Insérer les données dédupliquées et agrégées dans une base de données Cassandra. 
+![WorkFlow kafkastream : Boontadata](/static/img/kafka-streams/kafka-streams-7.png)
+
+De manière plus approfondie, la plateforme générique boontadata est constituée des éléments suivants :
+
+* Simulateur IOT permettant de créer des flux de messages.
+* Système de messagerie distribué Kafka basé sur le principe du "publisher" / "Subscriber".
+* Base de données Cassandra pour le stockage des données et résultats.
+* Service de traitement des flux : Kafka Streams dans le cas de ce blog post.
+* Module de comparaison pour évaluer l'impact et la performance du module de traitement.
+![WorkFlow complet](/static/img/kafka-streams/kafka-streams-8.png)
+
+Tous les éléments de la plateforme boontada sont créés dans des containers distincts de manière à apporter un maximum de flexibilité.
+
+Afin de connaître la procédure d’installation, n’hésitez pas à aller sur le lien [suivant](https://github.com/boontadata/boontadata-streams/blob/master/doc/procedure_install_running_scenarios.md).
+
+Ayant déjà traité le fonctionnement de notre environnement et l'architecture de boontadata dans les blogs précédents (voir l'article Spark Streaming dans la série boontadata), nous détaillerons ici le code correspondant au nouveau scénario Kafka Streaming.
+
+----------------------------------------
+### Code : 
+
+#### Configuration de connexion à Kafka et récupération du message :
+
+* Définition de la configuration du streaming en précisant :
+ - le nom de l'application.
+ - les serveurs Kafka (bootstrap_servers).
+ - les serveurs zookeeper.
+ - le nom de la classe servant de Serializer et celle servant de Deserializer.
+
+Ce sont là les paramètres primordiaux lors d'une configuration stream avec Kafka.
+
+<script src="https://gist.github.com/BastienBP/6a00f51045a9108178d33f67e70e85b6.js"></script>
+
+<li>Création d'une classe POJO avec son constructeur associé.</li>
+
+<script src="https://gist.github.com/BastienBP/e3f36d3b5d2259ab5e37cf6b857a9a6e.js"></script>
+
+* La récupération du message se fait en 3 étapes : 
+  1. On construit un ``` KStream<String, String> ``` en appliquant la fonction stream sur le KStreamBuilder, et en lui donnant comme paramètre le topic à streamer.
+  2. On parse le message brut en le splittant selon le séparateur "|"; On définit ainsi une nouvelle valeur du message s'apparentant aux éléments envoyés par l'ioT.
+  3. On obtient alors une nouvelle clé (MessageId) et une nouvelle valeur (les élements de l'iot joints).
+
+<script src="https://gist.github.com/robertoNdams/99f59298c684c0ab14decb99c18c5f35.js"></script> 
+
+<h4>Déduplication et agrégation sur 5 secondes</h4>
+
+<li>Une fois le message récupéré, il convient de dédupliquer les messages, on fait alors un reduce sur un window time de 5 secondes sur les données en ne renvoyant qu'une valeur lorsqu’elles sont dupliquées.</li>
+<li> On redéfinit ensuite la clé en lui donnant comme valeur (deviceId, category), puis on retourne comme message la somme de l'élément measure1 et celui de measure2. Ceci avec un window time de 5 secondes.</li>
+
+<script src="https://gist.github.com/robertoNdams/e102ef880600c358e4e539838c771cab.js"></script>
+
+#### Application de la requête et écriture dans Cassandra
+
+* Requête : Chaque donnée agrégée du Stream sera insérée dans Cassandra
+<script src="https://gist.github.com/robertoNdams/8c5983fe19dd9b42fb32bbb41db66476.js"></script>
+
+* Ecriture dans Cassandra : Utilisation de la fonction foreach sur les Stream
+  - Chaque message agrégé est formé d'une clé et d'une valeur, le parsage de la clé permettra d'obtenir le device_id, la category et le window_time.
+  - Le parsage de la valeur permettra d'obtenir la somme de la measure1 et celle de la measure2.
+
+<script src="https://gist.github.com/robertoNdams/39f36522377f64dddd9b60072180d7c9.js"></script>
+
+##### Elément essentiel à l'exécution d'un stream 
+```
+KafkaStreams streams = new KafkaStreams(builder, config);
+streams.start();
+Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
+```
+
+Ce bout de code doit obligatoirement être écrit dans la classe principale. S'il n'est pas présent, aucun stream n'est effectué. 
+
+### Resultats : 
+
+Les résultats obtenus avec le moteur Kafka Streams sont les suivants :
+```
+Comparing ingest device and downstream for m1_sum
+10 exceptions out of 21
+``` 
+![Some Results!](/static/img/kafka-streams/results.png)
+
+Si on compare les résultats obtenus ici face aux autres moteurs testés (Spark Streaming, Spark Structured Streaming et Flink), Kafka Streams fait le meilleur score en Processing Time. Ce qui confirme l'affirmation du début de ce blogppost : Kafka Streams est la solution la mieux adaptée pour traiter la donnée venant d'un producer Kafka. 
+
+----------------------------------------
+
+
+
+
+
+---
+excerpt:
+
+Ce blog sera dédié à la présentation et l'utilisation de Kafka Streams au sein de l'environnement Boontadata. 
+---
+pub_date: 2017-05-15
